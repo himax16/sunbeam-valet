@@ -75,6 +75,7 @@ class TableRow(BaseModel):
     classification: str | None
     priority: str | None
     action: str | None
+    rationale: str | None
     agent_votes: dict[str, float]
     status: Literal["ok", "error", "round2"]
     round2: bool

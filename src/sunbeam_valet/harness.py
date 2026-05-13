@@ -122,6 +122,7 @@ class Harness:
                 classification=None,
                 priority=None,
                 action=None,
+                rationale=None,
                 agent_votes=judge_output.agent_votes,
                 status="error",
                 round2=judge_output.did_round2,
@@ -130,15 +131,12 @@ class Harness:
         return TableRow(
             bug_reference=f"LP:#{bug.id}",
             bug_reference_url=bug.url,
-            summary=(
-                judge_output.summary[:100] + "..."
-                if len(judge_output.summary) > 100
-                else judge_output.summary
-            ),
+            summary=judge_output.summary,
             confidence=judge_output.confidence,
             classification=judge_output.classification,
             priority=judge_output.priority,
             action=judge_output.action,
+            rationale=judge_output.rationale,
             agent_votes=judge_output.agent_votes,
             status=judge_output.status,
             round2=judge_output.did_round2,
