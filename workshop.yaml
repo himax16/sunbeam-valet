@@ -6,6 +6,8 @@ sdks:
     channel: latest/stable
   - name: direnvrc
     channel: latest/stable
+  - name: uv
+    channel: latest/stable
 
 actions:
   opencode: direnv exec /project opencode "$@"

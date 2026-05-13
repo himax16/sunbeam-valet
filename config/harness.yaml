@@ -1,0 +1,42 @@
+agents:
+  - name: security_expert
+    system_prompt: |
+      You are a security expert. Focus on CVEs, exposure, and severity.
+      Assess whether this bug has security implications.
+    model: openai/gpt-4o
+
+  - name: triage_specialist
+    system_prompt: |
+      You are a triage specialist. Focus on bug completeness and missing info.
+      Identify what additional information would help resolve this bug.
+    model: openai/gpt-4o-mini
+
+judge:
+  name: judge
+  system_prompt: |
+    You are the judge. Merge agent concerns into a single coherent verdict.
+    Your output must include a clear summary, confidence score (0-1), and status.
+    When merging concerns, prioritize by urgency and impact.
+  model: openai/gpt-4o
+  consensus_threshold: 0.7
+
+routing:
+  strategy: all_agents
+
+round2_trigger:
+  metric: std_dev
+  threshold: 0.3
+
+max_rounds: 2
+
+mattermost:
+  server_url: "${MATTERMOST_URL}"
+  bot_token: "${MATTERMOST_BOT_TOKEN}"
+  channel_id: "${MATTERMOST_CHANNEL_ID}"
+
+watchtower:
+  command: ["watchtower", "bugs", "--format", "json"]
+  bug_filter:
+    status:
+      - New
+      - Confirmed
