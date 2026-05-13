@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from sunbeam_valet.agent.pool import AgentPool
+from sunbeam_valet.agent.pool import AgentPool, RoundResult
 from sunbeam_valet.config import AgentConfig
 from sunbeam_valet.harness import Harness
 from sunbeam_valet.models import AgentAnalysis, AgentOutput, Bug, JudgeDecision
@@ -39,7 +39,7 @@ def mock_agent_configs():
 
 class TestAgentPool:
     @pytest.mark.asyncio
-    async def test_run_round1_returns_outputs(self, mock_bug, mock_agent_configs):
+    async def test_run_agents_returns_outputs_for_round(self, mock_bug, mock_agent_configs):
         pool = AgentPool(mock_agent_configs)
         with patch("sunbeam_valet.agent.runner.Agent") as mock_agent_class:
             mock_agent = AsyncMock()
@@ -52,12 +52,13 @@ class TestAgentPool:
                 ),
             )
 
-            result = await pool.run_round1(mock_bug)
+            result = await pool.run_agents(mock_bug, round_number=1)
             assert len(result.outputs) == 2
+            assert {output.round for output in result.outputs} == {1}
             assert result.errors == {}
 
     @pytest.mark.asyncio
-    async def test_run_round1_handles_errors(self, mock_bug, mock_agent_configs):
+    async def test_run_agents_handles_errors(self, mock_bug, mock_agent_configs):
         pool = AgentPool(mock_agent_configs)
         with patch("sunbeam_valet.agent.runner.Agent") as mock_agent_class:
             mock_agent = AsyncMock()
@@ -73,9 +74,45 @@ class TestAgentPool:
                 ),
             ]
 
-            result = await pool.run_round1(mock_bug)
+            result = await pool.run_agents(mock_bug, round_number=1)
             assert len(result.outputs) == 1
             assert "security_expert" in result.errors
+
+    @pytest.mark.asyncio
+    async def test_run_agents_uses_context_for_later_rounds(self, mock_bug, mock_agent_configs):
+        pool = AgentPool(mock_agent_configs)
+        round1_outputs = [
+            AgentOutput(
+                agent_name="security_expert",
+                round=1,
+                verdict="needs more info",
+                confidence=0.4,
+                concerns=[],
+                raw_output="",
+            )
+        ]
+
+        with patch("sunbeam_valet.agent.runner.Agent") as mock_agent_class:
+            mock_agent = AsyncMock()
+            mock_agent_class.return_value = mock_agent
+            mock_agent.run.return_value = AsyncMock(
+                output=AgentAnalysis(
+                    verdict="updated",
+                    confidence=0.7,
+                    concerns=[],
+                ),
+            )
+
+            result = await pool.run_agents(
+                mock_bug,
+                round_number=2,
+                context=round1_outputs,
+            )
+
+        assert len(result.outputs) == 2
+        assert {output.round for output in result.outputs} == {2}
+        prompts = [call.args[0] for call in mock_agent.run.await_args_list]
+        assert all("OTHER AGENTS' ROUND 1 OUTPUTS" in prompt for prompt in prompts)
 
 
 class TestHarness:
@@ -83,26 +120,28 @@ class TestHarness:
     async def test_process_bug_round1_only(self, mock_bug, sample_harness_config):
         harness = Harness(sample_harness_config)
 
-        with patch.object(harness.pool, "run_round1", new_callable=AsyncMock) as mock_r1:
-            mock_r1.return_value.outputs = [
-                AgentOutput(
-                    agent_name="sec",
-                    round=1,
-                    verdict="v1",
-                    confidence=0.9,
-                    concerns=[],
-                    raw_output="",
-                ),
-                AgentOutput(
-                    agent_name="tri",
-                    round=1,
-                    verdict="v2",
-                    confidence=0.85,
-                    concerns=[],
-                    raw_output="",
-                ),
-            ]
-            mock_r1.return_value.errors = {}
+        with patch.object(harness.pool, "run_agents", new_callable=AsyncMock) as mock_run_agents:
+            mock_run_agents.return_value = RoundResult(
+                outputs=[
+                    AgentOutput(
+                        agent_name="sec",
+                        round=1,
+                        verdict="v1",
+                        confidence=0.9,
+                        concerns=[],
+                        raw_output="",
+                    ),
+                    AgentOutput(
+                        agent_name="tri",
+                        round=1,
+                        verdict="v2",
+                        confidence=0.85,
+                        concerns=[],
+                        raw_output="",
+                    ),
+                ],
+                errors={},
+            )
 
             with patch("sunbeam_valet.judge.engine.Agent") as mock_judge_agent:
                 mock_judge = AsyncMock()
@@ -119,6 +158,7 @@ class TestHarness:
 
         assert row.bug_reference == "LP:#12345"
         assert row.round2 == "no"
+        mock_run_agents.assert_awaited_once_with(mock_bug, round_number=1)
 
     @pytest.mark.asyncio
     async def test_process_bug_triggers_round2_on_disagreement(
@@ -127,62 +167,69 @@ class TestHarness:
         sample_harness_config.round2_trigger.threshold = 0.05
         harness = Harness(sample_harness_config)
 
-        with patch.object(harness.pool, "run_round1", new_callable=AsyncMock) as mock_r1:
-            mock_r1.return_value.outputs = [
-                AgentOutput(
-                    agent_name="sec",
-                    round=1,
-                    verdict="v1",
-                    confidence=0.9,
-                    concerns=[],
-                    raw_output="",
-                ),
-                AgentOutput(
-                    agent_name="tri",
-                    round=1,
-                    verdict="v2",
-                    confidence=0.3,
-                    concerns=[],
-                    raw_output="",
+        round1_outputs = [
+            AgentOutput(
+                agent_name="sec",
+                round=1,
+                verdict="v1",
+                confidence=0.9,
+                concerns=[],
+                raw_output="",
+            ),
+            AgentOutput(
+                agent_name="tri",
+                round=1,
+                verdict="v2",
+                confidence=0.3,
+                concerns=[],
+                raw_output="",
+            ),
+        ]
+        with patch.object(harness.pool, "run_agents", new_callable=AsyncMock) as mock_run_agents:
+            mock_run_agents.side_effect = [
+                RoundResult(outputs=round1_outputs, errors={}),
+                RoundResult(
+                    outputs=[
+                        AgentOutput(
+                            agent_name="sec",
+                            round=2,
+                            verdict="v1-updated",
+                            confidence=0.85,
+                            concerns=[],
+                            raw_output="",
+                        ),
+                        AgentOutput(
+                            agent_name="tri",
+                            round=2,
+                            verdict="v2-updated",
+                            confidence=0.4,
+                            concerns=[],
+                            raw_output="",
+                        ),
+                    ],
+                    errors={},
                 ),
             ]
-            mock_r1.return_value.errors = {}
 
-            with patch.object(harness.pool, "run_round2", new_callable=AsyncMock) as mock_r2:
-                mock_r2.return_value.outputs = [
-                    AgentOutput(
-                        agent_name="sec",
-                        round=2,
-                        verdict="v1-updated",
-                        confidence=0.85,
+            with patch("sunbeam_valet.judge.engine.Agent") as mock_judge_agent:
+                mock_judge = AsyncMock()
+                mock_judge_agent.return_value = mock_judge
+                mock_judge.run.return_value = AsyncMock(
+                    output=JudgeDecision(
+                        summary="Merged after debate",
+                        confidence=0.65,
                         concerns=[],
-                        raw_output="",
                     ),
-                    AgentOutput(
-                        agent_name="tri",
-                        round=2,
-                        verdict="v2-updated",
-                        confidence=0.4,
-                        concerns=[],
-                        raw_output="",
-                    ),
-                ]
-                mock_r2.return_value.errors = {}
+                )
 
-                with patch("sunbeam_valet.judge.engine.Agent") as mock_judge_agent:
-                    mock_judge = AsyncMock()
-                    mock_judge_agent.return_value = mock_judge
-                    mock_judge.run.return_value = AsyncMock(
-                        output=JudgeDecision(
-                            summary="Merged after debate",
-                            confidence=0.65,
-                            concerns=[],
-                        ),
-                    )
-
-                    row = await harness._process_bug(mock_bug)
+                row = await harness._process_bug(mock_bug)
 
         assert row.round2 == "yes"
+        assert mock_run_agents.await_args_list[0].kwargs == {"round_number": 1}
+        assert mock_run_agents.await_args_list[1].kwargs == {
+            "round_number": 2,
+            "context": round1_outputs,
+        }
 
     @pytest.mark.asyncio
     async def test_process_bug_skips_round2_when_max_rounds_is_one(
@@ -192,31 +239,30 @@ class TestHarness:
         sample_harness_config.round2_trigger.threshold = 0.05
         harness = Harness(sample_harness_config)
 
-        with patch.object(harness.pool, "run_round1", new_callable=AsyncMock) as mock_r1:
-            mock_r1.return_value.outputs = [
-                AgentOutput(
-                    agent_name="sec",
-                    round=1,
-                    verdict="v1",
-                    confidence=0.9,
-                    concerns=[],
-                    raw_output="",
-                ),
-                AgentOutput(
-                    agent_name="tri",
-                    round=1,
-                    verdict="v2",
-                    confidence=0.3,
-                    concerns=[],
-                    raw_output="",
-                ),
-            ]
-            mock_r1.return_value.errors = {}
+        with patch.object(harness.pool, "run_agents", new_callable=AsyncMock) as mock_run_agents:
+            mock_run_agents.return_value = RoundResult(
+                outputs=[
+                    AgentOutput(
+                        agent_name="sec",
+                        round=1,
+                        verdict="v1",
+                        confidence=0.9,
+                        concerns=[],
+                        raw_output="",
+                    ),
+                    AgentOutput(
+                        agent_name="tri",
+                        round=1,
+                        verdict="v2",
+                        confidence=0.3,
+                        concerns=[],
+                        raw_output="",
+                    ),
+                ],
+                errors={},
+            )
 
-            with (
-                patch.object(harness.pool, "run_round2", new_callable=AsyncMock) as mock_r2,
-                patch("sunbeam_valet.judge.engine.Agent") as mock_judge_agent,
-            ):
+            with patch("sunbeam_valet.judge.engine.Agent") as mock_judge_agent:
                 mock_judge = AsyncMock()
                 mock_judge_agent.return_value = mock_judge
                 mock_judge.run.return_value = AsyncMock(
@@ -230,15 +276,17 @@ class TestHarness:
                 row = await harness._process_bug(mock_bug)
 
         assert row.round2 == "no"
-        mock_r2.assert_not_called()
+        mock_run_agents.assert_awaited_once_with(mock_bug, round_number=1)
 
     @pytest.mark.asyncio
     async def test_process_bug_error_propagates(self, mock_bug, sample_harness_config):
         harness = Harness(sample_harness_config)
 
-        with patch.object(harness.pool, "run_round1", new_callable=AsyncMock) as mock_r1:
-            mock_r1.return_value.outputs = []
-            mock_r1.return_value.errors = {"sec": "API timeout"}
+        with patch.object(harness.pool, "run_agents", new_callable=AsyncMock) as mock_run_agents:
+            mock_run_agents.return_value = RoundResult(
+                outputs=[],
+                errors={"sec": "API timeout"},
+            )
 
             with patch("sunbeam_valet.judge.engine.Agent") as mock_judge_agent:
                 mock_judge = AsyncMock()

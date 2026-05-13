@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 
-from sunbeam_valet.agent.runner import AgentResult, run_agent, run_agent_with_context
+from sunbeam_valet.agent.runner import AgentResult, run_agent
 from sunbeam_valet.config import AgentConfig
 from sunbeam_valet.models import AgentOutput, Bug
 
@@ -14,37 +14,31 @@ class RoundResult:
 
 class AgentPool:
     def __init__(self, agent_configs: list[AgentConfig]):
-        self.agents = {cfg.name: cfg for cfg in agent_configs}
+        self.agents = list(agent_configs)
 
-    async def run_round1(
+    async def run_agents(
         self,
         bug: Bug,
-    ) -> RoundResult:
-        tasks = [run_agent(config, bug, "") for config in self.agents.values()]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        return self._collect_results(results, round=1)
-
-    async def run_round2(
-        self,
-        bug: Bug,
-        round1_outputs: list[AgentOutput],
+        *,
+        round_number: int,
+        context: list[AgentOutput] | None = None,
     ) -> RoundResult:
         tasks = [
-            run_agent_with_context(config, bug, round1_outputs) for config in self.agents.values()
+            run_agent(config, bug, round_number=round_number, context=context)
+            for config in self.agents
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        return self._collect_results(results, round=2)
+        return self._collect_results(results)
 
     def _collect_results(
         self,
         results: list[AgentResult | BaseException],
-        round: int,
     ) -> RoundResult:
         outputs = []
         errors = {}
 
-        for i, result in enumerate(results):
-            agent_name = list(self.agents.values())[i].name
+        for config, result in zip(self.agents, results, strict=True):
+            agent_name = config.name
 
             if isinstance(result, BaseException):
                 errors[agent_name] = str(result)
@@ -59,9 +53,7 @@ class AgentPool:
                 continue
 
             if result.output:
-                output = result.output
-                output.round = round
-                outputs.append(output)
+                outputs.append(result.output)
             else:
                 errors[agent_name] = "no output returned"
 

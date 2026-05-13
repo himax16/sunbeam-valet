@@ -47,7 +47,7 @@ class Harness:
     async def _process_bug(self, bug: Bug) -> TableRow:
         logger.debug(f"Processing bug {bug.id}")
 
-        round1_result = await self.pool.run_round1(bug)
+        round1_result = await self.pool.run_agents(bug, round_number=1)
         all_outputs = list(round1_result.outputs)
 
         if round1_result.errors:
@@ -75,7 +75,11 @@ class Harness:
                     f"Bug {bug.id}: disagreement {disagreement:.3f} > "
                     f"threshold {self.config.round2_trigger.threshold}, running round 2"
                 )
-                round2_result = await self.pool.run_round2(bug, all_outputs)
+                round2_result = await self.pool.run_agents(
+                    bug,
+                    round_number=2,
+                    context=list(all_outputs),
+                )
                 all_outputs.extend(round2_result.outputs)
                 did_round2 = True
 
