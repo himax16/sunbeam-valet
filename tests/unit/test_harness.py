@@ -150,6 +150,10 @@ class TestHarness:
                     output=JudgeDecision(
                         summary="Merged verdict",
                         confidence=0.87,
+                        classification="bug",
+                        priority="high",
+                        action="next release",
+                        rationale="Agents agree this is a bug.",
                         concerns=[],
                     ),
                 )
@@ -218,6 +222,10 @@ class TestHarness:
                     output=JudgeDecision(
                         summary="Merged after debate",
                         confidence=0.65,
+                        classification="bug",
+                        priority="medium",
+                        action="next release",
+                        rationale="Round 2 preserved the bug classification.",
                         concerns=[],
                     ),
                 )
@@ -269,6 +277,10 @@ class TestHarness:
                     output=JudgeDecision(
                         summary="Merged without debate",
                         confidence=0.65,
+                        classification="bug",
+                        priority="medium",
+                        action="next release",
+                        rationale="Round 2 was disabled.",
                         concerns=[],
                     ),
                 )
@@ -295,6 +307,10 @@ class TestHarness:
                     output=JudgeDecision(
                         summary="Error handling",
                         confidence=0.5,
+                        classification="other",
+                        priority="low",
+                        action="monitor",
+                        rationale="No agent output was returned.",
                         concerns=[],
                     ),
                 )
@@ -313,6 +329,10 @@ class TestHarness:
                 bug_id=mock_bug.id,
                 summary="Merged",
                 confidence=0.8,
+                classification="bug",
+                priority="high",
+                action="next release",
+                rationale="Agents agree this is a bug.",
                 concerns=[],
                 agent_votes={"sec": 0.8},
                 status="ok",
@@ -346,6 +366,10 @@ class TestHarness:
                 bug_id=mock_bug.id,
                 summary="Merged",
                 confidence=0.8,
+                classification="bug",
+                priority="high",
+                action="next release",
+                rationale="Agents agree this is a bug.",
                 concerns=[],
                 agent_votes={"sec": 0.8},
                 status="ok",
@@ -376,6 +400,10 @@ class TestHarness:
                 bug_id=mock_bug.id,
                 summary="Merged",
                 confidence=0.8,
+                classification="bug",
+                priority="high",
+                action="next release",
+                rationale="Agents agree this is a bug.",
                 concerns=[],
                 agent_votes={"sec": 0.8},
                 status="ok",

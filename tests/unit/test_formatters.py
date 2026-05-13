@@ -17,6 +17,9 @@ class TestMarkdownFormatter:
                 bug_reference_url="https://bugs.launchpad.net/bugs/12345",
                 summary="Test bug summary",
                 confidence=0.85,
+                classification="bug",
+                priority="high",
+                action="next release",
                 agent_votes={"sec": 0.9, "tri": 0.6},
                 status="ok",
                 round2=False,
@@ -25,6 +28,9 @@ class TestMarkdownFormatter:
         result = formatter.format(rows, 0)
         assert "LP:#12345" in result
         assert "0.85" in result
+        assert "bug" in result
+        assert "high" in result
+        assert "next release" in result
         assert "ok" in result
 
     def test_format_with_round2(self):
@@ -35,6 +41,9 @@ class TestMarkdownFormatter:
                 bug_reference_url="https://bugs.launchpad.net/bugs/12345",
                 summary="Test",
                 confidence=0.72,
+                classification="operational issue",
+                priority="medium",
+                action="monitor",
                 agent_votes={"sec": 0.9},
                 status="round2",
                 round2=True,
@@ -51,6 +60,9 @@ class TestMarkdownFormatter:
                 bug_reference_url="https://bugs.launchpad.net/bugs/99999",
                 summary="Connection timeout",
                 confidence=None,
+                classification=None,
+                priority=None,
+                action=None,
                 agent_votes={},
                 status="error",
                 round2=False,
