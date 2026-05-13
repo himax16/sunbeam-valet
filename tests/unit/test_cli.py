@@ -22,10 +22,30 @@ def test_main_runs_harness_with_config_path():
         coroutine.close()
 
     assert result == 0
-    mock_load_config.assert_called_once_with(Path("custom.yaml"))
+    mock_load_config.assert_called_once_with(Path("custom.yaml"), require_mattermost=True)
     mock_harness_class.assert_called_once_with(mock_load_config.return_value)
-    mock_harness.run.assert_called_once_with()
+    mock_harness.run.assert_called_once_with(post_to_mattermost=True, limit=None)
     mock_asyncio_run.assert_called_once_with(coroutine)
+
+
+def test_main_can_write_report_to_stdout(capsys):
+    with (
+        patch("sunbeam_valet.cli.load_config") as mock_load_config,
+        patch("sunbeam_valet.cli.Harness") as mock_harness_class,
+        patch("sunbeam_valet.cli.asyncio.run", return_value="report body") as mock_asyncio_run,
+    ):
+        coroutine = _noop()
+        mock_harness = mock_harness_class.return_value
+        mock_harness.run = MagicMock(return_value=coroutine)
+
+        result = cli.main(["--config", "custom.yaml", "--output", "stdout", "--limit", "5"])
+        coroutine.close()
+
+    assert result == 0
+    mock_load_config.assert_called_once_with(Path("custom.yaml"), require_mattermost=False)
+    mock_harness.run.assert_called_once_with(post_to_mattermost=False, limit=5)
+    mock_asyncio_run.assert_called_once_with(coroutine)
+    assert capsys.readouterr().out == "report body\n"
 
 
 def test_main_returns_error_for_invalid_config():

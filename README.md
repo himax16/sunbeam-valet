@@ -14,15 +14,33 @@ sunbeam-valet --config config/harness.yaml
 The default config path is `config/harness.yaml`. Use `--log-level DEBUG` for
 more verbose runtime logging.
 
+For local validation without a running Mattermost instance, render the report to
+stdout and cap the number of bugs sent to the models:
+
+```sh
+source .envrc
+export WATCHTOWER_CONFIG=/path/to/sunbeam-watchtower/watchtower.yaml
+sunbeam-valet --config config/harness.yaml --output stdout --limit 5
+```
+
+The harness config uses explicit pydantic-ai model IDs. For OpenRouter, prefix
+models with `openrouter:`, for example:
+
+```yaml
+model: openrouter:deepseek/deepseek-v4-flash
+```
+
 Runtime configuration currently expects:
 
-- `MATTERMOST_URL`
-- `MATTERMOST_BOT_TOKEN`
-- `MATTERMOST_CHANNEL_ID`
+- `OPENROUTER_API_KEY` for the configured OpenRouter models
+- `WATCHTOWER_CONFIG` when Watchtower should use a non-default config file
+- `MATTERMOST_URL`, `MATTERMOST_BOT_TOKEN`, and `MATTERMOST_CHANNEL_ID` when
+  using the default Mattermost output
 - A Watchtower command that writes a JSON list of Launchpad bugs to stdout
 
-Each Watchtower item may include `id`, `title`, `status`, `importance`,
-`description`, `url`, and `source`. The source defaults to `launchpad`.
+Each Watchtower item may include `id` or `bug_id`, `title`, `status`,
+`importance`, `description`, `url`, and `source`. The source defaults to
+`launchpad`; if no description is present, the title is reused as description.
 
 ## Development Environment
 

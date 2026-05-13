@@ -66,7 +66,7 @@ class HarnessConfig(BaseModel):
         default_factory=lambda: Round2TriggerConfig(metric="std_dev", threshold=0.3)
     )
     max_rounds: int = Field(default=2)
-    mattermost: MattermostConfig
+    mattermost: MattermostConfig | None = None
     watchtower: WatchtowerConfig
 
     @field_validator("max_rounds")
@@ -84,7 +84,7 @@ class HarnessConfig(BaseModel):
         return self
 
 
-def load_config(path: str | Path) -> HarnessConfig:
+def load_config(path: str | Path, *, require_mattermost: bool = True) -> HarnessConfig:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
@@ -94,8 +94,15 @@ def load_config(path: str | Path) -> HarnessConfig:
     with open(path, encoding="utf-8") as f:
         raw = yaml.load(f, Loader=EnvLoader)
 
+    if not require_mattermost and isinstance(raw, dict):
+        raw = dict(raw)
+        raw.pop("mattermost", None)
+
     processed = _substitute_env_vars(raw)
-    return HarnessConfig.model_validate(processed)
+    config = HarnessConfig.model_validate(processed)
+    if require_mattermost and config.mattermost is None:
+        raise ValueError("Mattermost configuration is required for Mattermost output")
+    return config
 
 
 def _substitute_env_vars(obj: Any) -> YamlValue:

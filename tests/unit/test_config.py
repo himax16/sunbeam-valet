@@ -34,6 +34,7 @@ watchtower:
 
     config = load_config(config_path)
 
+    assert config.mattermost is not None
     assert config.mattermost.server_url == "https://mattermost.example.com"
     assert config.mattermost.bot_token == "test-token"
     assert config.mattermost.channel_id == "channel-id"
@@ -63,6 +64,33 @@ watchtower:
 
     with pytest.raises(ValueError, match="MATTERMOST_URL"):
         load_config(config_path)
+
+
+def test_load_config_can_skip_mattermost_for_stdout(tmp_path):
+    config_path = tmp_path / "harness.yaml"
+    config_path.write_text(
+        """
+agents:
+  - name: triage
+    system_prompt: Prompt
+    model: test
+judge:
+  name: judge
+  system_prompt: Judge prompt
+  model: test
+mattermost:
+  server_url: "${MATTERMOST_URL}"
+  bot_token: "${MATTERMOST_BOT_TOKEN}"
+  channel_id: "${MATTERMOST_CHANNEL_ID}"
+watchtower:
+  command: ["watchtower"]
+""",
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path, require_mattermost=False)
+
+    assert config.mattermost is None
 
 
 def test_harness_config_rejects_duplicate_agent_names(sample_harness_config):

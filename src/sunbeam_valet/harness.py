@@ -19,11 +19,13 @@ class Harness:
         self.fetcher = WatchtowerFetcher(config.watchtower)
         self.disagreement_metric = StdDevDisagreementMetric()
         self.formatter = MarkdownFormatter()
-        self.poster = MattermostPoster(config.mattermost)
+        self.poster = MattermostPoster(config.mattermost) if config.mattermost else None
 
-    async def run(self) -> None:
+    async def run(self, *, post_to_mattermost: bool = True, limit: int | None = None) -> str:
         logger.info("Fetching bugs from watchtower...")
         bugs = await self.fetcher.fetch()
+        if limit is not None:
+            bugs = bugs[:limit]
         logger.info(f"Fetched {len(bugs)} bugs")
 
         table_rows = []
@@ -36,12 +38,19 @@ class Harness:
                 round2_count += 1
 
         message = self.formatter.format(table_rows, round2_count)
+        if not post_to_mattermost:
+            return message
+
+        if self.poster is None:
+            raise ValueError("Mattermost configuration is required for Mattermost output")
+
         logger.info(
             "Posting to Mattermost channel '%s'...",
-            self.config.mattermost.channel_id,
+            self.config.mattermost.channel_id if self.config.mattermost else "",
         )
         await self.poster.post(message)
         logger.info("Done.")
+        return message
 
     async def _triage_bug(self, bug: Bug) -> TableRow:
         logger.debug(f"Processing bug {bug.id}")
