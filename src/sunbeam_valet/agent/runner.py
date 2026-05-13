@@ -83,4 +83,7 @@ def _build_other_agents_context(outputs: list[AgentOutput]) -> str:
     ]
     for output in outputs:
         lines.append(f"  - {output.agent_name} (confidence={output.confidence}): {output.verdict}")
+        if output.concerns:
+            concerns = "; ".join(output.concerns)
+            lines.append(f"    concerns: {concerns}")
     return "\n".join(lines)

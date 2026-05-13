@@ -57,6 +57,7 @@ src/testTestingRootWkspc/coverageWorkspace/.coverage
 
 # ignore ai artifacts generated and placed in this folder
 ai-artifacts/*
+.desloppify/
 
 # Workshop specific
 .envrc

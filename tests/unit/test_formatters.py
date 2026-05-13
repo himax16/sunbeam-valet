@@ -16,10 +16,10 @@ class TestMarkdownFormatter:
                 bug_reference="LP:#12345",
                 bug_reference_url="https://bugs.launchpad.net/bugs/12345",
                 summary="Test bug summary",
-                confidence="0.85",
-                agent_votes="sec:0.9, tri:0.6",
+                confidence=0.85,
+                agent_votes={"sec": 0.9, "tri": 0.6},
                 status="ok",
-                round2="no",
+                round2=False,
             )
         ]
         result = formatter.format(rows, 0)
@@ -34,10 +34,10 @@ class TestMarkdownFormatter:
                 bug_reference="LP:#12345",
                 bug_reference_url="https://bugs.launchpad.net/bugs/12345",
                 summary="Test",
-                confidence="0.72",
-                agent_votes="sec:0.9",
+                confidence=0.72,
+                agent_votes={"sec": 0.9},
                 status="round2",
-                round2="yes",
+                round2=True,
             )
         ]
         result = formatter.format(rows, 1)
@@ -50,10 +50,10 @@ class TestMarkdownFormatter:
                 bug_reference="LP:#99999",
                 bug_reference_url="https://bugs.launchpad.net/bugs/99999",
                 summary="Connection timeout",
-                confidence="ERROR",
-                agent_votes="-",
+                confidence=None,
+                agent_votes={},
                 status="error",
-                round2="-",
+                round2=False,
             )
         ]
         result = formatter.format(rows, 0)

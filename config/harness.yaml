@@ -15,13 +15,9 @@ judge:
   name: judge
   system_prompt: |
     You are the judge. Merge agent concerns into a single coherent verdict.
-    Your output must include a clear summary, confidence score (0-1), and status.
+    Your output must include a clear summary and confidence score (0-1).
     When merging concerns, prioritize by urgency and impact.
   model: openai/gpt-4o
-  consensus_threshold: 0.7
-
-routing:
-  strategy: all_agents
 
 round2_trigger:
   metric: std_dev

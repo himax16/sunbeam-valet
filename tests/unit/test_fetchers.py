@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from sunbeam_valet.config import WatchtowerConfig
+from sunbeam_valet.config import WatchtowerBugFilter, WatchtowerConfig
 from sunbeam_valet.fetchers.watchtower import WatchtowerFetcher
 
 
@@ -39,7 +39,7 @@ async def test_fetch_uses_exec_and_filters_statuses():
     ]
     config = WatchtowerConfig(
         command=["watchtower", "bugs", "--format", "json"],
-        bug_filter={"status": ["New"]},
+        bug_filter=WatchtowerBugFilter(status=["New"]),
     )
 
     with patch(
@@ -77,5 +77,47 @@ async def test_fetch_raises_for_non_list_json():
             new=AsyncMock(return_value=FakeProcess(0, b'{"id": "1"}')),
         ),
         pytest.raises(ValueError, match="JSON list"),
+    ):
+        await WatchtowerFetcher(config).fetch()
+
+
+@pytest.mark.asyncio
+async def test_fetch_wraps_invalid_json_with_context():
+    config = WatchtowerConfig(command=["watchtower"])
+
+    with (
+        patch(
+            "sunbeam_valet.fetchers.watchtower.asyncio.create_subprocess_exec",
+            new=AsyncMock(return_value=FakeProcess(0, b"not-json")),
+        ),
+        pytest.raises(ValueError, match="invalid JSON"),
+    ):
+        await WatchtowerFetcher(config).fetch()
+
+
+@pytest.mark.asyncio
+async def test_fetch_wraps_invalid_item_with_index():
+    config = WatchtowerConfig(command=["watchtower"])
+
+    with (
+        patch(
+            "sunbeam_valet.fetchers.watchtower.asyncio.create_subprocess_exec",
+            new=AsyncMock(return_value=FakeProcess(0, b'["not-a-bug"]')),
+        ),
+        pytest.raises(ValueError, match="index 0"),
+    ):
+        await WatchtowerFetcher(config).fetch()
+
+
+@pytest.mark.asyncio
+async def test_fetch_rejects_missing_required_bug_fields():
+    config = WatchtowerConfig(command=["watchtower"])
+
+    with (
+        patch(
+            "sunbeam_valet.fetchers.watchtower.asyncio.create_subprocess_exec",
+            new=AsyncMock(return_value=FakeProcess(0, b'[{"id": "1"}]')),
+        ),
+        pytest.raises(ValueError, match="index 0"),
     ):
         await WatchtowerFetcher(config).fetch()
