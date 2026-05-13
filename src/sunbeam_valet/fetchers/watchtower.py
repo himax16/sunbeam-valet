@@ -2,18 +2,18 @@ import asyncio
 import json
 from typing import Literal
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import AliasChoices, BaseModel, Field, ValidationError
 
 from sunbeam_valet.config import WatchtowerConfig
 from sunbeam_valet.models import Bug
 
 
 class WatchtowerBugPayload(BaseModel):
-    id: str = Field(min_length=1)
+    id: str = Field(validation_alias=AliasChoices("id", "bug_id"), min_length=1)
     title: str = Field(min_length=1)
     status: str = Field(min_length=1)
     importance: str = Field(min_length=1)
-    description: str = Field(min_length=1)
+    description: str | None = None
     url: str = Field(min_length=1)
     source: Literal["launchpad"] = "launchpad"
 
@@ -56,7 +56,7 @@ class WatchtowerFetcher:
             title=payload.title,
             status=payload.status,
             importance=payload.importance,
-            description=payload.description,
+            description=payload.description or payload.title,
             url=payload.url,
             source=payload.source,
         )

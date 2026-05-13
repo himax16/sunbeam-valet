@@ -66,7 +66,7 @@ class HarnessConfig(BaseModel):
         default_factory=lambda: Round2TriggerConfig(metric="std_dev", threshold=0.3)
     )
     max_rounds: int = Field(default=2)
-    mattermost: MattermostConfig
+    mattermost: MattermostConfig | None = None
     watchtower: WatchtowerConfig
 
     @field_validator("max_rounds")
@@ -84,7 +84,7 @@ class HarnessConfig(BaseModel):
         return self
 
 
-def load_config(path: str | Path) -> HarnessConfig:
+def load_config(path: str | Path, *, require_mattermost: bool = True) -> HarnessConfig:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
@@ -94,8 +94,16 @@ def load_config(path: str | Path) -> HarnessConfig:
     with open(path, encoding="utf-8") as f:
         raw = yaml.load(f, Loader=EnvLoader)
 
+    if not require_mattermost and isinstance(raw, dict):
+        raw = dict(raw)
+        raw.pop("mattermost", None)
+
     processed = _substitute_env_vars(raw)
-    return HarnessConfig.model_validate(processed)
+    _load_system_prompt_files(processed, base_dir=path.parent)
+    config = HarnessConfig.model_validate(processed)
+    if require_mattermost and config.mattermost is None:
+        raise ValueError("Mattermost configuration is required for Mattermost output")
+    return config
 
 
 def _substitute_env_vars(obj: Any) -> YamlValue:
@@ -106,3 +114,42 @@ def _substitute_env_vars(obj: Any) -> YamlValue:
     elif isinstance(obj, list):
         return [_substitute_env_vars(item) for item in obj]
     return obj
+
+
+def _load_system_prompt_files(obj: YamlValue, *, base_dir: Path) -> None:
+    if not isinstance(obj, dict):
+        return
+
+    for section in _prompt_sections(obj):
+        if not isinstance(section, dict):
+            continue
+
+        prompt_file = section.pop("system_prompt_file", None)
+        has_inline_prompt = "system_prompt" in section
+        if prompt_file is None:
+            continue
+
+        if has_inline_prompt:
+            name = section.get("name", "unknown")
+            raise ValueError(f"{name} cannot define both system_prompt and system_prompt_file")
+        if not isinstance(prompt_file, str):
+            raise ValueError("system_prompt_file must be a string path")
+
+        prompt_path = Path(prompt_file)
+        if not prompt_path.is_absolute():
+            prompt_path = base_dir / prompt_path
+        try:
+            section["system_prompt"] = prompt_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(f"Prompt file not found: {prompt_path}") from exc
+
+
+def _prompt_sections(obj: dict[str, YamlValue]) -> list[YamlValue]:
+    sections: list[YamlValue] = []
+    agents = obj.get("agents", [])
+    if isinstance(agents, list):
+        sections.extend(agents)
+    judge = obj.get("judge")
+    if judge is not None:
+        sections.append(judge)
+    return sections

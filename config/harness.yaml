@@ -1,23 +1,20 @@
 agents:
-  - name: security_expert
-    system_prompt: |
-      You are a security expert. Focus on CVEs, exposure, and severity.
-      Assess whether this bug has security implications.
-    model: openai/gpt-4o
+  - name: developer
+    system_prompt_file: ../agents/developer.md
+    model: openrouter:deepseek/deepseek-v4-flash
 
-  - name: triage_specialist
-    system_prompt: |
-      You are a triage specialist. Focus on bug completeness and missing info.
-      Identify what additional information would help resolve this bug.
-    model: openai/gpt-4o-mini
+  - name: sre
+    system_prompt_file: ../agents/sre.md
+    model: openrouter:mistralai/mistral-medium-3-5
+
+  - name: product_manager
+    system_prompt_file: ../agents/product_manager.md
+    model: openrouter:deepseek/deepseek-v4-flash
 
 judge:
   name: judge
-  system_prompt: |
-    You are the judge. Merge agent concerns into a single coherent verdict.
-    Your output must include a clear summary and confidence score (0-1).
-    When merging concerns, prioritize by urgency and impact.
-  model: openai/gpt-4o
+  system_prompt_file: ../agents/judge.md
+  model: openrouter:minimax/minimax-m2.7
 
 round2_trigger:
   metric: std_dev
@@ -31,7 +28,7 @@ mattermost:
   channel_id: "${MATTERMOST_CHANNEL_ID}"
 
 watchtower:
-  command: ["watchtower", "bugs", "--format", "json"]
+  command: ["watchtower", "bug", "list", "-o", "json", "--merge"]
   bug_filter:
     status:
       - New
