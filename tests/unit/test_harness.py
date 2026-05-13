@@ -320,6 +320,33 @@ class TestHarness:
         assert row.status == "error"
         assert row.confidence is None
 
+    def test_to_table_row_preserves_full_judge_summary(self, mock_bug, sample_harness_config):
+        harness = Harness(sample_harness_config)
+        summary = (
+            "This judge summary is intentionally longer than one hundred "
+            "characters so the report keeps the complete triage context "
+            "instead of hiding the useful part behind an ellipsis."
+        )
+
+        row = harness._to_table_row(
+            mock_bug,
+            JudgeOutput(
+                bug_id=mock_bug.id,
+                summary=summary,
+                confidence=0.8,
+                classification="bug",
+                priority="high",
+                action="next release",
+                rationale="The full summary should be visible.",
+                concerns=[],
+                agent_votes={"sec": 0.8},
+                status="ok",
+                did_round2=False,
+            ),
+        )
+
+        assert row.summary == summary
+
     @pytest.mark.asyncio
     async def test_run_fetches_triages_formats_and_posts(self, mock_bug, sample_harness_config):
         harness = Harness(sample_harness_config)

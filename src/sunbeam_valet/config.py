@@ -45,9 +45,35 @@ class Round2TriggerConfig(BaseModel):
 
 
 class MattermostConfig(BaseModel):
-    server_url: str
-    bot_token: str
-    channel_id: str
+    mode: Literal["bot", "webhook"] = "bot"
+    server_url: str | None = None
+    bot_token: str | None = None
+    channel_id: str | None = None
+    webhook_url: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_mode_fields(self) -> "MattermostConfig":
+        if self.mode == "bot":
+            missing = [
+                field
+                for field in ("server_url", "bot_token", "channel_id")
+                if getattr(self, field) in {None, ""}
+            ]
+            if missing:
+                raise ValueError("bot mode requires server_url, bot_token, and channel_id")
+            if self.webhook_url:
+                raise ValueError("bot mode cannot define webhook_url")
+        elif self.mode == "webhook":
+            if not self.webhook_url:
+                raise ValueError("webhook mode requires webhook_url")
+            bot_fields = [
+                field
+                for field in ("server_url", "bot_token", "channel_id")
+                if getattr(self, field) not in {None, ""}
+            ]
+            if bot_fields:
+                raise ValueError("webhook mode cannot define server_url, bot_token, or channel_id")
+        return self
 
 
 class WatchtowerBugFilter(BaseModel):

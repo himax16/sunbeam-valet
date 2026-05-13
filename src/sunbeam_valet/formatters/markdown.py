@@ -8,9 +8,9 @@ class MarkdownFormatter:
         lines = [
             f"**Bug Triage Report** - {date.today().isoformat()}",
             "",
-            "| Bug Reference | Summary | Priority | Action | Confidence | "
+            "| Bug Reference | Summary | Priority | Action | Rationale | Confidence | "
             "Agent Votes | Status | Round 2? |",
-            "|---|---|---|---|---|---|---|---|",
+            "|---|---|---|---|---|---|---|---|---|",
         ]
 
         for row in rows:
@@ -19,6 +19,7 @@ class MarkdownFormatter:
                 f"| {row.summary} "
                 f"| {_format_decision(row.classification, row.priority)} "
                 f"| {_format_optional(row.action)} "
+                f"| {_format_optional(row.rationale)} "
                 f"| {_format_confidence(row.confidence)} "
                 f"| {_format_agent_votes(row.agent_votes)} "
                 f"| {row.status} "
