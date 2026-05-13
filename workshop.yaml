@@ -4,6 +4,8 @@ base: ubuntu@24.04
 sdks:
   - name: opencode
     channel: latest/stable
+  - name: direnvrc
+    channel: latest/stable
 
 actions:
-  opencode: opencode "$@"
+  opencode: direnv exec /project opencode "$@"
