@@ -13,14 +13,16 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "pydantic-ai>=1.95.0",
+    "httpx>=0.28.0",
+    "pyyaml>=6.0",
 ]
 
 [project.scripts]
-sunbeam-valet = "sunbeam_valet:main"
+sunbeam-valet = "sunbeam_valet.cli:main"
 
 [dependency-groups]
 dev = ["ruff", "ty", "pre-commit"]
-test = ["pytest", "coverage[toml]"]
+test = ["pytest", "pytest-asyncio", "coverage[toml]"]
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -41,7 +43,7 @@ select = [
     "RUF",
     "D",
 ]
-ignore = ["D100", "D104", "D107"]
+ignore = ["D100", "D101", "D102", "D103", "D104", "D107"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -59,7 +61,8 @@ extra-paths = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["tests/unit"]
+testpaths = ["tests/unit", "tests/integration"]
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["src"]

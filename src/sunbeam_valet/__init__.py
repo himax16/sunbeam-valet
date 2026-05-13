@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from sunbeam-valet!")
+from sunbeam_valet.harness import Harness
+
+__all__ = ["Harness"]
