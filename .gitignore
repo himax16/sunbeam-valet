@@ -55,6 +55,12 @@ python_files/tests/*/.data/*/.coverage*
 src/testTestingRootWkspc/coverageWorkspace/.coverage
 *.egg-info
 
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
 # ignore ai artifacts generated and placed in this folder
 ai-artifacts/*
 .desloppify/
@@ -62,3 +68,19 @@ ai-artifacts/*
 # Workshop specific
 .envrc
 .workshop.lock
+.envrc
+
+# Terragrunt
+**/.terragrunt-cache
+
+# Sensitive files
+*.key
+*.crt
+*.pem
+*.secret
+
+# Logs
+*.log
+
+# tfenv
+.tfenv/
