@@ -38,6 +38,7 @@ class JudgeOutput(BaseModel):
     bug_id: str
     summary: str
     confidence: float = Field(ge=0.0, le=1.0)
+    concerns: list[str] = Field(default_factory=list)
     agent_votes: dict[str, float]
     status: Literal["ok", "error", "round2"]
     did_round2: bool
@@ -48,7 +49,7 @@ class TableRow(BaseModel):
     bug_reference: str
     bug_reference_url: str
     summary: str
-    confidence: str
-    agent_votes: str
-    status: str
-    round2: str
+    confidence: float | None
+    agent_votes: dict[str, float]
+    status: Literal["ok", "error", "round2"]
+    round2: bool

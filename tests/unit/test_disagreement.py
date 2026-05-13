@@ -1,6 +1,3 @@
-import pytest
-
-from sunbeam_valet.disagreement import get_metric
 from sunbeam_valet.disagreement.std_dev import StdDevDisagreementMetric
 from sunbeam_valet.models import AgentOutput
 
@@ -46,13 +43,3 @@ class TestStdDevDisagreementMetric:
         ]
         result = metric.compute(outputs)
         assert result > 0.0
-
-
-class TestGetMetric:
-    def test_get_std_dev(self):
-        metric = get_metric("std_dev")
-        assert isinstance(metric, StdDevDisagreementMetric)
-
-    def test_unknown_metric_raises(self):
-        with pytest.raises(ValueError):
-            get_metric("unknown")

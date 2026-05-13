@@ -30,3 +30,4 @@ async def test_post_uses_mattermost_bot_api():
             "Content-Type": "application/json",
         },
     )
+    assert mock_client.post.await_count == 1

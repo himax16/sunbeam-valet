@@ -5,7 +5,7 @@ import pytest
 from sunbeam_valet.agent.pool import AgentPool, RoundResult
 from sunbeam_valet.config import AgentConfig
 from sunbeam_valet.harness import Harness
-from sunbeam_valet.models import AgentAnalysis, AgentOutput, Bug, JudgeDecision
+from sunbeam_valet.models import AgentAnalysis, AgentOutput, Bug, JudgeDecision, JudgeOutput
 
 
 @pytest.fixture
@@ -154,10 +154,10 @@ class TestHarness:
                     ),
                 )
 
-                row = await harness._process_bug(mock_bug)
+                row = await harness._triage_bug(mock_bug)
 
         assert row.bug_reference == "LP:#12345"
-        assert row.round2 == "no"
+        assert row.round2 is False
         mock_run_agents.assert_awaited_once_with(mock_bug, round_number=1)
 
     @pytest.mark.asyncio
@@ -222,9 +222,9 @@ class TestHarness:
                     ),
                 )
 
-                row = await harness._process_bug(mock_bug)
+                row = await harness._triage_bug(mock_bug)
 
-        assert row.round2 == "yes"
+        assert row.round2 is True
         assert mock_run_agents.await_args_list[0].kwargs == {"round_number": 1}
         assert mock_run_agents.await_args_list[1].kwargs == {
             "round_number": 2,
@@ -273,9 +273,9 @@ class TestHarness:
                     ),
                 )
 
-                row = await harness._process_bug(mock_bug)
+                row = await harness._triage_bug(mock_bug)
 
-        assert row.round2 == "no"
+        assert row.round2 is False
         mock_run_agents.assert_awaited_once_with(mock_bug, round_number=1)
 
     @pytest.mark.asyncio
@@ -299,7 +299,40 @@ class TestHarness:
                     ),
                 )
 
-                row = await harness._process_bug(mock_bug)
+                row = await harness._triage_bug(mock_bug)
 
         assert row.status == "error"
-        assert row.confidence == "ERROR"
+        assert row.confidence is None
+
+    @pytest.mark.asyncio
+    async def test_run_fetches_triages_formats_and_posts(self, mock_bug, sample_harness_config):
+        harness = Harness(sample_harness_config)
+        row = harness._to_table_row(
+            mock_bug,
+            JudgeOutput(
+                bug_id=mock_bug.id,
+                summary="Merged",
+                confidence=0.8,
+                concerns=[],
+                agent_votes={"sec": 0.8},
+                status="ok",
+                did_round2=False,
+            ),
+        )
+
+        with (
+            patch.object(harness.fetcher, "fetch", new_callable=AsyncMock) as mock_fetch,
+            patch.object(harness, "_triage_bug", new_callable=AsyncMock) as mock_triage,
+            patch.object(harness.poster, "post", new_callable=AsyncMock) as mock_post,
+        ):
+            mock_fetch.return_value = [mock_bug]
+            mock_triage.return_value = row
+
+            await harness.run()
+
+        mock_fetch.assert_awaited_once_with()
+        mock_triage.assert_awaited_once_with(mock_bug)
+        mock_post.assert_awaited_once()
+        posted_message = mock_post.call_args.args[0]
+        assert "LP:#12345" in posted_message
+        assert "Merged" in posted_message

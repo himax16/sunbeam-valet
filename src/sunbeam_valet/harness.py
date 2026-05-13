@@ -1,13 +1,12 @@
 import logging
-from pathlib import Path
 
 from sunbeam_valet.agent.pool import AgentPool
-from sunbeam_valet.config import HarnessConfig, load_config
-from sunbeam_valet.disagreement import get_metric
-from sunbeam_valet.fetchers import get_fetcher
-from sunbeam_valet.formatters import get_formatter
-from sunbeam_valet.judge import run_judge
-from sunbeam_valet.mattermost import MattermostPoster
+from sunbeam_valet.config import HarnessConfig
+from sunbeam_valet.disagreement.std_dev import StdDevDisagreementMetric
+from sunbeam_valet.fetchers.watchtower import WatchtowerFetcher
+from sunbeam_valet.formatters.markdown import MarkdownFormatter
+from sunbeam_valet.judge.engine import run_judge
+from sunbeam_valet.mattermost.poster import MattermostPoster
 from sunbeam_valet.models import Bug, JudgeOutput, TableRow
 
 logger = logging.getLogger(__name__)
@@ -17,9 +16,9 @@ class Harness:
     def __init__(self, config: HarnessConfig):
         self.config = config
         self.pool = AgentPool(config.agents)
-        self.fetcher = get_fetcher("watchtower", config.watchtower)
-        self.disagreement_metric = get_metric(config.round2_trigger.metric)
-        self.formatter = get_formatter("markdown")
+        self.fetcher = WatchtowerFetcher(config.watchtower)
+        self.disagreement_metric = StdDevDisagreementMetric()
+        self.formatter = MarkdownFormatter()
         self.poster = MattermostPoster(config.mattermost)
 
     async def run(self) -> None:
@@ -31,9 +30,9 @@ class Harness:
         round2_count = 0
 
         for bug in bugs:
-            row = await self._process_bug(bug)
+            row = await self._triage_bug(bug)
             table_rows.append(row)
-            if row.round2 == "yes":
+            if row.round2:
                 round2_count += 1
 
         message = self.formatter.format(table_rows, round2_count)
@@ -44,7 +43,7 @@ class Harness:
         await self.poster.post(message)
         logger.info("Done.")
 
-    async def _process_bug(self, bug: Bug) -> TableRow:
+    async def _triage_bug(self, bug: Bug) -> TableRow:
         logger.debug(f"Processing bug {bug.id}")
 
         round1_result = await self.pool.run_agents(bug, round_number=1)
@@ -60,6 +59,7 @@ class Harness:
                     bug_id=bug.id,
                     summary="ERROR",
                     confidence=0.0,
+                    concerns=[],
                     agent_votes={},
                     status="error",
                     did_round2=False,
@@ -105,15 +105,11 @@ class Harness:
                 bug_reference=f"LP:#{bug.id}",
                 bug_reference_url=bug.url,
                 summary=judge_output.error or "Unknown error",
-                confidence="ERROR",
-                agent_votes="-",
+                confidence=None,
+                agent_votes=judge_output.agent_votes,
                 status="error",
-                round2="-" if not judge_output.did_round2 else "yes",
+                round2=judge_output.did_round2,
             )
-
-        agent_votes_str = ", ".join(
-            f"{name}:{conf:.1f}" for name, conf in judge_output.agent_votes.items()
-        )
 
         return TableRow(
             bug_reference=f"LP:#{bug.id}",
@@ -123,18 +119,8 @@ class Harness:
                 if len(judge_output.summary) > 100
                 else judge_output.summary
             ),
-            confidence=f"{judge_output.confidence:.2f}",
-            agent_votes=agent_votes_str,
+            confidence=judge_output.confidence,
+            agent_votes=judge_output.agent_votes,
             status=judge_output.status,
-            round2="yes" if judge_output.did_round2 else "no",
+            round2=judge_output.did_round2,
         )
-
-
-async def run(config_path: str | Path = "config/harness.yaml") -> None:
-    config_file = Path(config_path)
-    if not config_file.is_absolute():
-        config_file = Path(__file__).parent.parent.parent / config_path
-
-    config = load_config(config_file)
-    harness = Harness(config)
-    await harness.run()

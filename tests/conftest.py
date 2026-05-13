@@ -6,7 +6,7 @@ from sunbeam_valet.config import (
     JudgeConfig,
     MattermostConfig,
     Round2TriggerConfig,
-    RoutingConfig,
+    WatchtowerBugFilter,
     WatchtowerConfig,
 )
 
@@ -33,7 +33,6 @@ def sample_judge_config():
         name="judge",
         system_prompt="You are the judge.",
         model="openai/gpt-4o",
-        consensus_threshold=0.7,
     )
 
 
@@ -50,7 +49,7 @@ def sample_mattermost_config():
 def sample_watchtower_config():
     return WatchtowerConfig(
         command=["watchtower", "bugs", "--format", "json"],
-        bug_filter={"status": ["New", "Confirmed"]},
+        bug_filter=WatchtowerBugFilter(status=["New", "Confirmed"]),
     )
 
 
@@ -61,7 +60,6 @@ def sample_harness_config(
     return HarnessConfig(
         agents=sample_agent_configs,
         judge=sample_judge_config,
-        routing=RoutingConfig(),
         round2_trigger=Round2TriggerConfig(metric="std_dev", threshold=0.3),
         max_rounds=2,
         mattermost=sample_mattermost_config,

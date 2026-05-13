@@ -1,15 +1,27 @@
 import asyncio
 import json
-from typing import Any
+from typing import Literal
+
+from pydantic import BaseModel, Field, ValidationError
 
 from sunbeam_valet.config import WatchtowerConfig
 from sunbeam_valet.models import Bug
 
 
+class WatchtowerBugPayload(BaseModel):
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    status: str = Field(min_length=1)
+    importance: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    url: str = Field(min_length=1)
+    source: Literal["launchpad"] = "launchpad"
+
+
 class WatchtowerFetcher:
     def __init__(self, config: WatchtowerConfig):
         self.command = config.command
-        self.bug_filter = config.bug_filter
+        self.status_filter = config.bug_filter.status
 
     async def fetch(self) -> list[Bug]:
         proc = await asyncio.create_subprocess_exec(
@@ -22,30 +34,35 @@ class WatchtowerFetcher:
         if proc.returncode != 0:
             raise RuntimeError(f"watchtower command failed: {stderr.decode()}")
 
-        raw = json.loads(stdout.decode())
+        try:
+            raw = json.loads(stdout.decode())
+        except json.JSONDecodeError as exc:
+            raise ValueError("watchtower command returned invalid JSON") from exc
+
         if not isinstance(raw, list):
             raise ValueError("watchtower command must return a JSON list")
 
-        bugs = [self._parse_bug(item) for item in raw]
+        bugs = [self._parse_bug(item, index) for index, item in enumerate(raw)]
         return self._filter_bugs(bugs)
 
-    def _parse_bug(self, raw: dict[str, Any]) -> Bug:
+    def _parse_bug(self, raw: object, index: int) -> Bug:
+        try:
+            payload = WatchtowerBugPayload.model_validate(raw)
+        except ValidationError as exc:
+            raise ValueError(f"invalid watchtower bug at index {index}") from exc
+
         return Bug(
-            id=raw.get("id", ""),
-            title=raw.get("title", ""),
-            status=raw.get("status", ""),
-            importance=raw.get("importance", ""),
-            description=raw.get("description", ""),
-            url=raw.get("url", ""),
-            source=raw.get("source", "launchpad"),
+            id=payload.id,
+            title=payload.title,
+            status=payload.status,
+            importance=payload.importance,
+            description=payload.description,
+            url=payload.url,
+            source=payload.source,
         )
 
     def _filter_bugs(self, bugs: list[Bug]) -> list[Bug]:
-        if not self.bug_filter:
+        if not self.status_filter:
             return bugs
 
-        statuses = self.bug_filter.get("status", [])
-        if not statuses:
-            return bugs
-
-        return [b for b in bugs if b.status in statuses]
+        return [b for b in bugs if b.status in self.status_filter]

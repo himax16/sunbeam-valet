@@ -1,20 +1,30 @@
 import os
 import re
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 _ENV_VAR_PATTERN = re.compile(r"\$\{([^}]+)\}")
+type YamlValue = str | int | float | bool | None | list[YamlValue] | dict[str, YamlValue]
 
 
-def _env_var_constructor(loader, node):
-    value = loader.construct_scalar(node)
-    matches = _ENV_VAR_PATTERN.findall(value)
-    for var in matches:
-        value = value.replace(f"${{{var}}}", os.environ.get(var, ""))
+class EnvLoader(yaml.SafeLoader):
+    pass
+
+
+def _replace_required_env_vars(value: str) -> str:
+    for var in _ENV_VAR_PATTERN.findall(value):
+        if var not in os.environ or os.environ[var] == "":
+            raise ValueError(f"Environment variable {var} is required")
+        value = value.replace(f"${{{var}}}", os.environ[var])
     return value
+
+
+def _env_var_constructor(loader: yaml.SafeLoader, node: yaml.Node) -> str:
+    value = loader.construct_scalar(node)
+    return _replace_required_env_vars(value)
 
 
 class AgentConfig(BaseModel):
@@ -27,15 +37,10 @@ class JudgeConfig(BaseModel):
     name: str
     system_prompt: str
     model: str
-    consensus_threshold: float = Field(ge=0.0, le=1.0, default=0.7)
-
-
-class RoutingConfig(BaseModel):
-    strategy: Literal["all_agents"] = "all_agents"
 
 
 class Round2TriggerConfig(BaseModel):
-    metric: str = "std_dev"
+    metric: Literal["std_dev"] = "std_dev"
     threshold: float = Field(ge=0.0)
 
 
@@ -45,15 +50,18 @@ class MattermostConfig(BaseModel):
     channel_id: str
 
 
+class WatchtowerBugFilter(BaseModel):
+    status: list[str] = Field(default_factory=list)
+
+
 class WatchtowerConfig(BaseModel):
     command: list[str] = Field(min_length=1)
-    bug_filter: dict[str, list[str]] = Field(default_factory=dict)
+    bug_filter: WatchtowerBugFilter = Field(default_factory=WatchtowerBugFilter)
 
 
 class HarnessConfig(BaseModel):
     agents: list[AgentConfig] = Field(min_length=1)
     judge: JudgeConfig
-    routing: RoutingConfig = Field(default_factory=RoutingConfig)
     round2_trigger: Round2TriggerConfig = Field(
         default_factory=lambda: Round2TriggerConfig(metric="std_dev", threshold=0.3)
     )
@@ -81,9 +89,6 @@ def load_config(path: str | Path) -> HarnessConfig:
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
 
-    class EnvLoader(yaml.SafeLoader):
-        pass
-
     EnvLoader.add_constructor("!env", _env_var_constructor)
 
     with open(path, encoding="utf-8") as f:
@@ -93,16 +98,11 @@ def load_config(path: str | Path) -> HarnessConfig:
     return HarnessConfig.model_validate(processed)
 
 
-def _substitute_env_vars(obj):
+def _substitute_env_vars(obj: Any) -> YamlValue:
     if isinstance(obj, str):
-        matches = _ENV_VAR_PATTERN.findall(obj)
-        for var in matches:
-            if var not in os.environ or os.environ[var] == "":
-                raise ValueError(f"Environment variable {var} is required")
-            obj = obj.replace(f"${{{var}}}", os.environ[var])
-        return obj
+        return _replace_required_env_vars(obj)
     elif isinstance(obj, dict):
-        return {k: _substitute_env_vars(v) for k, v in obj.items()}
+        return {str(k): _substitute_env_vars(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_substitute_env_vars(item) for item in obj]
     return obj
