@@ -16,6 +16,7 @@ async def run_judge(
         config.model,
         output_type=JudgeDecision,
         system_prompt=config.system_prompt,
+        output_retries=3,
     )
 
     prompt = _build_judge_prompt(bug, all_outputs, did_round2)
@@ -28,6 +29,10 @@ async def run_judge(
             bug_id=bug.id,
             summary=decision.summary,
             confidence=decision.confidence,
+            classification=decision.classification,
+            priority=decision.priority,
+            action=decision.action,
+            rationale=decision.rationale,
             concerns=decision.concerns,
             agent_votes={o.agent_name: o.confidence for o in all_outputs},
             status="round2" if did_round2 else "ok",
@@ -61,8 +66,23 @@ def _build_judge_prompt(bug: Bug, outputs: list[AgentOutput], did_round2: bool) 
 
     lines.append("")
     lines.append(
-        "As the judge, merge these analyses into a structured decision with "
-        "a summary, confidence score, and prioritized concerns."
+        "Return exactly one structured JudgeDecision. Do not return Markdown, "
+        "headings, bullets outside fields, prose before the object, or prose "
+        "after the object."
+    )
+    lines.append("")
+    lines.append(
+        "Required fields: summary, confidence, classification, priority, "
+        "action, rationale, concerns."
+    )
+    lines.append(
+        "classification must be one of: bug, feature request, security issue, "
+        "operational issue, other."
+    )
+    lines.append("priority must be one of: critical, high, medium, low.")
+    lines.append(
+        "action must be one of: fix immediately, hotfix, next release, "
+        "backlog, monitor, close/wontfix, other."
     )
 
     if did_round2:
@@ -81,6 +101,10 @@ def _error_output(
         bug_id=bug_id,
         summary="ERROR",
         confidence=0.0,
+        classification=None,
+        priority=None,
+        action=None,
+        rationale=None,
         concerns=[],
         agent_votes={o.agent_name: o.confidence for o in outputs} if outputs else {},
         status="error",

@@ -59,43 +59,20 @@ Balance all decisions across:
 
 ## Final Decision Output
 
-Your final triage decision must include the following sections:
+Return only the structured decision fields requested by the application. Do not
+return Markdown, headings, a report, or extra prose outside the structured
+fields.
 
-### 1. Reviewer Summaries
+The decision must include:
 
-Summarize the primary concerns and conclusions of:
-- the SRE
-- the Senior Software Engineer
-- the Product Manager
+- `summary`: one concise sentence summarizing the final triage outcome
+- `confidence`: a number between 0.0 and 1.0
+- `classification`: one of bug, feature request, security issue, operational issue, other
+- `priority`: one of critical, high, medium, low
+- `action`: one of fix immediately, hotfix, next release, backlog, monitor, close/wontfix, other
+- `rationale`: a concise explanation for the classification, priority, and action
+- `concerns`: a list of the most important unresolved risks or missing information
 
-### 2. Agreements and Disagreements
-
-Identify:
-- major areas of alignment
-- major conflicts in interpretation or prioritization
-- important tradeoffs between perspectives
-
-### 3. Critical Risk Assessment
-
-Explain:
-- which risks are most consequential
-- whether any reviewer identified hidden or systemic danger
-- the overall organizational impact of the issue
-
-### 4. Final Decision
-
-Provide:
-
-- **Classification**: bug, feature request, security issue, operational issue, or other
-- **Priority**: critical, high, medium, or low
-- **Action**: fix immediately, hotfix, next release, backlog, monitor, close/wontfix, or other
-- **Severity/Category Label**: concise final severity label if applicable
-
-### 5. Rationale
-
-Provide a concise but clear explanation for the final decision, including:
-- why the final classification was chosen
-- why certain concerns outweighed others
-- why the final priority and action are justified
-
-Your decision must be authoritative, internally consistent, and grounded in the combined evidence from all reviewers.
+Your decision must be authoritative, internally consistent, and grounded in the
+combined evidence from all reviewers. If reviewers disagree, resolve the
+disagreement in `rationale`; do not avoid a decision.

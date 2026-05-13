@@ -1,7 +1,7 @@
 agents:
   - name: developer
     system_prompt_file: ../agents/developer.md
-    model: openrouter:deepseek/deepseek-v4-flash
+    model: openrouter:minimax/minimax-m2.7
 
   - name: sre
     system_prompt_file: ../agents/sre.md
@@ -9,12 +9,12 @@ agents:
 
   - name: product_manager
     system_prompt_file: ../agents/product_manager.md
-    model: openrouter:deepseek/deepseek-v4-flash
+    model: openrouter:moonshotai/kimi-k2.6
 
 judge:
   name: judge
   system_prompt_file: ../agents/judge.md
-  model: openrouter:minimax/minimax-m2.7
+  model: openrouter:deepseek/deepseek-v4-pro
 
 round2_trigger:
   metric: std_dev
