@@ -93,6 +93,65 @@ watchtower:
     assert config.mattermost is None
 
 
+def test_load_config_accepts_mattermost_webhook(tmp_path, monkeypatch):
+    monkeypatch.setenv(
+        "MATTERMOST_WEBHOOK_URL",
+        "https://mattermost.example.com/hooks/test-hook",
+    )
+
+    config_path = tmp_path / "harness.yaml"
+    config_path.write_text(
+        """
+agents:
+  - name: triage
+    system_prompt: Prompt
+    model: test
+judge:
+  name: judge
+  system_prompt: Judge prompt
+  model: test
+mattermost:
+  mode: webhook
+  webhook_url: "${MATTERMOST_WEBHOOK_URL}"
+watchtower:
+  command: ["watchtower"]
+""",
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert config.mattermost is not None
+    assert config.mattermost.mode == "webhook"
+    assert config.mattermost.webhook_url == "https://mattermost.example.com/hooks/test-hook"
+
+
+def test_load_config_rejects_webhook_with_bot_fields(tmp_path):
+    config_path = tmp_path / "harness.yaml"
+    config_path.write_text(
+        """
+agents:
+  - name: triage
+    system_prompt: Prompt
+    model: test
+judge:
+  name: judge
+  system_prompt: Judge prompt
+  model: test
+mattermost:
+  mode: webhook
+  webhook_url: https://mattermost.example.com/hooks/test-hook
+  channel_id: channel-id
+watchtower:
+  command: ["watchtower"]
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="webhook mode"):
+        load_config(config_path)
+
+
 def test_load_config_reads_system_prompt_files_relative_to_config(tmp_path):
     prompts_dir = tmp_path / "prompts"
     prompts_dir.mkdir()

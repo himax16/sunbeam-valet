@@ -45,8 +45,8 @@ class Harness:
             raise ValueError("Mattermost configuration is required for Mattermost output")
 
         logger.info(
-            "Posting to Mattermost channel '%s'...",
-            self.config.mattermost.channel_id if self.config.mattermost else "",
+            "Posting to Mattermost via %s...",
+            self.config.mattermost.mode if self.config.mattermost else "",
         )
         await self.poster.post(message)
         logger.info("Done.")

@@ -34,9 +34,28 @@ Runtime configuration currently expects:
 
 - `OPENROUTER_API_KEY` for the configured OpenRouter models
 - `WATCHTOWER_CONFIG` when Watchtower should use a non-default config file
-- `MATTERMOST_URL`, `MATTERMOST_BOT_TOKEN`, and `MATTERMOST_CHANNEL_ID` when
-  using the default Mattermost output
+- `MATTERMOST_WEBHOOK_URL` when using the default webhook-based Mattermost
+  output
 - A Watchtower command that writes a JSON list of Launchpad bugs to stdout
+
+Mattermost output supports two modes. Webhook mode posts directly to an incoming
+webhook URL and does not require a bot token or channel ID:
+
+```yaml
+mattermost:
+  mode: webhook
+  webhook_url: "${MATTERMOST_WEBHOOK_URL}"
+```
+
+Bot mode uses Mattermost's posts API with a bot token:
+
+```yaml
+mattermost:
+  mode: bot
+  server_url: "${MATTERMOST_URL}"
+  bot_token: "${MATTERMOST_BOT_TOKEN}"
+  channel_id: "${MATTERMOST_CHANNEL_ID}"
+```
 
 Each Watchtower item may include `id` or `bug_id`, `title`, `status`,
 `importance`, `description`, `url`, and `source`. The source defaults to
