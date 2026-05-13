@@ -18,6 +18,57 @@ dependencies = [
 [project.scripts]
 sunbeam-valet = "sunbeam_valet:main"
 
+[dependency-groups]
+dev = ["ruff", "ty", "pre-commit"]
+test = ["pytest", "coverage[toml]"]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+    "RUF",
+    "D",
+]
+ignore = ["D100", "D104", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ty.rules]
+possibly-missing-attribute = "ignore"
+invalid-assignment = "ignore"
+
+[tool.ty.environment]
+python-version = "3.12"
+extra-paths = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests/unit"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "scm"
