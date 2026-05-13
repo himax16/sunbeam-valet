@@ -1,0 +1,23 @@
+[project]
+name = "sunbeam-valet"
+version = "0.1.0"
+description = "AI-assisted project valet for Sunbeam: triages backlog, surfaces actionable work, and helps maintainers keep issue queues healthy."
+readme = "README.md"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Guillaume Boutry", email = "guillaume.boutry@canonical.com" },
+    { name = "Felipe Reyes", email = "felipe.reyes@canonical.com" },
+    { name = "Himawan Winarto", email = "himawan.winarto@canonical.com" },
+    { name = "Lucas Payne", email = "lucas.payne@canonical.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic-ai>=1.95.0",
+]
+
+[project.scripts]
+sunbeam-valet = "sunbeam_valet:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
