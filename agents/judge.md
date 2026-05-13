@@ -57,18 +57,6 @@ Balance all decisions across:
 
 ---
 
-## Deliberation Protocol
-
-Each reviewer evaluates the issue independently through the lens of their role.
-
-The Judge receives all reviewer analyses and attempts to reach a final triage decision immediately.
-
-If a clear consensus emerges — for example:
-- the issue is clearly a security vulnerability
-- the issue is obviously low-impact
-- the issue is a feature request rather than a defect
-- the severity is unambiguous
-
 ## Final Decision Output
 
 Your final triage decision must include the following sections:
