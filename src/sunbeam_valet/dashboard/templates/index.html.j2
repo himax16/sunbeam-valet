@@ -1,0 +1,50 @@
+{% extends "base.html.j2" %}
+
+{% block content %}
+<div class="toolbar">
+    <div class="toolbar-left">
+        <button class="btn btn-accent"
+                hx-post="/api/sync"
+                hx-target="#sync-output"
+                hx-swap="innerHTML"
+                hx-indicator="#sync-spinner">
+            Sync from Watchtower
+        </button>
+        <span id="sync-spinner" class="htmx-indicator" style="display: none;">Syncing…</span>
+    </div>
+    <div class="toolbar-right">
+        <span class="toolbar-stat">Cached: <strong>{{ bug_count }}</strong></span>
+        {% if last_sync %}
+            <span class="toolbar-stat">Last: <strong>{{ last_sync.status }}</strong></span>
+        {% endif %}
+    </div>
+</div>
+
+<div id="sync-output" class="sync-output"></div>
+
+{% if bugs %}
+<table id="bug-list">
+    <thead>
+        <tr>
+            <th>LP#</th>
+            <th>Title</th>
+            <th>Importance</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bug in bugs %}
+            {% include "bug_row.html.j2" %}
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">←</div>
+    <h2>No bugs in cache</h2>
+    <p>Click <strong>Sync from Watchtower</strong> to fetch bugs.</p>
+    <p class="empty-state-hint">Make sure watchtower is configured in <a href="/config">Settings</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

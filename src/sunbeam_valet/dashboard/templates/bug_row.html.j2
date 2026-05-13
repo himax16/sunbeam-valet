@@ -1,0 +1,41 @@
+<tr id="bug-{{ bug.id }}" class="bug-row" data-bug-id="{{ bug.id }}">
+    <td class="bug-id">LP#{{ bug.id }}</td>
+    <td class="bug-title-cell">
+        <a href="/bug/{{ bug.id }}" class="bug-title-link">{{ bug.title }}</a>
+    </td>
+    <td>
+        {% if bug.importance %}
+            <span class="badge importance importance-{{ bug.importance.lower() }}">{{ bug.importance }}</span>
+        {% else %}—{% endif %}
+    </td>
+    <td><span class="badge status-{{ bug.status.lower().replace(' ', '-') }}">{{ bug.status }}</span></td>
+    <td class="actions">
+        {% if bug.status|lower == "new" %}
+            <button class="btn btn-primary"
+                    hx-post="/bug/{{ bug.id }}/triage"
+                    hx-target="#bug-{{ bug.id }}"
+                    hx-swap="outerHTML">
+                Triage
+            </button>
+        {% elif bug.status|lower == "triaged" %}
+            <button class="btn btn-success"
+                    hx-post="/bug/{{ bug.id }}/judge"
+                    hx-target="#bug-{{ bug.id }}"
+                    hx-swap="outerHTML">
+                Judge
+            </button>
+            <button class="btn btn-warning"
+                    hx-post="/bug/{{ bug.id }}/triage"
+                    hx-target="#bug-{{ bug.id }}"
+                    hx-swap="outerHTML">
+                Triage
+            </button>
+        {% elif bug.status|lower in ["accepted", "rejected"] %}
+            <span class="terminal-state">—</span>
+        {% elif bug.status|lower == "triaging" %}
+            <span class="triaging-indicator">Triaging…</span>
+        {% else %}
+            <span class="terminal-state">Synced</span>
+        {% endif %}
+    </td>
+</tr>

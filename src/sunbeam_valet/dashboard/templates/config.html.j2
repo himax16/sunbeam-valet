@@ -1,0 +1,98 @@
+{% extends "base.html.j2" %}
+
+{% block content %}
+<a href="/" class="back-link">← Dashboard</a>
+
+<div class="config-page">
+    <h2>Watchtower Configuration</h2>
+
+    <form class="config-form" method="POST" action="/config/save">
+        <fieldset>
+            <legend>Server Settings</legend>
+
+            <div class="form-group">
+                <label for="watchtower_server_address">Server Address</label>
+                <input type="text" id="watchtower_server_address"
+                       name="watchtower_server_address"
+                       value="{{ settings.watchtower_server_address }}"
+                       placeholder="http://127.0.0.1:8472">
+                <span class="form-hint">HTTP API address of the watchtower server.</span>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="watchtower_server_host">Bind Host</label>
+                    <input type="text" id="watchtower_server_host"
+                           name="watchtower_server_host"
+                           value="{{ settings.watchtower_server_host }}"
+                           placeholder="127.0.0.1">
+                    <span class="form-hint">Host for auto-started server.</span>
+                </div>
+                <div class="form-group">
+                    <label for="watchtower_server_port">Bind Port</label>
+                    <input type="number" id="watchtower_server_port"
+                           name="watchtower_server_port"
+                           value="{{ settings.watchtower_server_port }}"
+                           min="1" max="65535">
+                    <span class="form-hint">Port for auto-started server (default: 8472).</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="watchtower_config_path">Config Path</label>
+                <input type="text" id="watchtower_config_path"
+                       name="watchtower_config_path"
+                       value="{{ settings.watchtower_config_path }}"
+                       placeholder="~/.config/sunbeam-watchtower/config.yaml">
+                <span class="form-hint">Path to watchtower YAML config. Used when auto-starting the server.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="watchtower_token">Auth Token</label>
+                <input type="password" id="watchtower_token"
+                       name="watchtower_token"
+                       value="{{ settings.watchtower_token }}"
+                       placeholder="Optional bearer token">
+                <span class="form-hint">Optional authentication token for the watchtower API.</span>
+            </div>
+
+            <div class="form-group form-checkbox">
+                <label>
+                    <input type="checkbox" name="watchtower_use_daemon"
+                           {% if settings.watchtower_use_daemon %}checked{% endif %}>
+                    Use daemon mode (<code>watchtower server start</code>)
+                </label>
+                <span class="form-hint">When unchecked, runs <code>watchtower serve</code> directly.</span>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
+    </form>
+
+    <div class="config-test">
+        <h3>Sync Test</h3>
+        <p class="config-test-desc">Sync bugs from the configured watchtower server into the local SQLite cache.</p>
+
+        <form hx-post="/api/sync"
+              hx-target="#sync-test-output"
+              hx-swap="innerHTML"
+              hx-indicator="#sync-test-spinner"
+              class="sync-test-form">
+            <div class="form-group">
+                <label for="sync-projects">Projects (comma-separated, optional)</label>
+                <input type="text" id="sync-projects" name="projects"
+                       placeholder="e.g. snap-openstack, sunbeam-charms">
+                <span class="form-hint">Leave empty to sync all configured projects.</span>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-accent">Run Sync</button>
+                <span id="sync-test-spinner" class="htmx-indicator" style="display: none;">Syncing…</span>
+            </div>
+        </form>
+
+        <pre id="sync-test-output" class="sync-test-output"></pre>
+    </div>
+</div>
+{% endblock %}

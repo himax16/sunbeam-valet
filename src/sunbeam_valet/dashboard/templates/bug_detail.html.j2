@@ -1,0 +1,80 @@
+{% extends "base.html.j2" %}
+
+{% block content %}
+<a href="/" class="back-link">← Dashboard</a>
+
+<div class="bug-detail-page">
+    <div class="bug-detail-card">
+        <div class="bug-actions-row">
+            {% if bug.status|lower == "new" %}
+                <button class="btn btn-primary"
+                        hx-post="/bug/{{ bug.id }}/triage"
+                        hx-target="body"
+                        hx-swap="innerHTML">Triage</button>
+            {% elif bug.status|lower == "triaged" %}
+                <button class="btn btn-success"
+                        hx-post="/bug/{{ bug.id }}/judge"
+                        hx-target="body"
+                        hx-swap="innerHTML">Judge</button>
+                <button class="btn btn-warning"
+                        hx-post="/bug/{{ bug.id }}/triage"
+                        hx-target="body"
+                        hx-swap="innerHTML">Re-Triage</button>
+            {% elif bug.status|lower in ["accepted", "rejected"] %}
+                <span class="terminal-state">No actions available</span>
+            {% elif bug.status|lower == "triaging" %}
+                <span class="triaging-indicator">Triaging…</span>
+            {% else %}
+                <span class="terminal-state">Synced from Launchpad</span>
+            {% endif %}
+        </div>
+
+        <div class="bug-detail-header">
+            <h2 class="bug-title-expanded">{{ bug.title }}</h2>
+            {% if bug.url %}
+                <a href="{{ bug.url }}" class="bug-url-link" target="_blank" rel="noopener">LP#{{ bug.id }} ↗</a>
+            {% endif %}
+        </div>
+
+        <div class="bug-meta">
+            <span class="badge source-{{ bug.source }}">{{ bug.source }}</span>
+            <span class="badge status-{{ bug.status.lower().replace(' ', '-') }}">{{ bug.status }}</span>
+            {% if bug.importance %}<span class="badge importance importance-{{ bug.importance.lower() }}">{{ bug.importance }}</span>{% endif %}
+            {% if bug.classification %}<span class="badge classification">{{ bug.classification }}</span>{% endif %}
+            {% if bug.priority %}<span class="badge priority-{{ bug.priority }}">{{ bug.priority }}</span>{% endif %}
+        </div>
+
+        {% if bug.description %}
+        <div class="bug-description">
+            <strong>Description:</strong><br>
+            {{ bug.description }}
+        </div>
+        {% endif %}
+
+        {% if bug.rationale %}
+        <div class="bug-rationale">
+            <strong>Rationale:</strong> {{ bug.rationale }}
+        </div>
+        {% endif %}
+
+        {% if bug.action %}
+        <div class="bug-action">
+            <strong>Action:</strong> {{ bug.action }}
+        </div>
+        {% endif %}
+
+        {% if judgements %}
+        <div class="judge-history">
+            <strong>Judgement History:</strong>
+            {% for j in judgements %}
+            <div class="judge-entry">
+                <span class="badge verdict-{{ j.verdict }}">{{ j.verdict }}</span>
+                <span class="judge-confidence">confidence: {{ (j.confidence * 100)|round|int }}%</span>
+                <div class="judge-summary">{{ j.summary }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
